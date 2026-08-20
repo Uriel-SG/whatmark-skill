@@ -59,7 +59,6 @@ measured in lexical and structural metrics.
 - Understanding **what gets lost** in machine translation compared to direct writing
 - Comparing **different translators** on the same source text and spotting their tics
 - Measuring the effect of **temperature** and other sampling parameters
-- Establishing the **background noise** of a local model: how much it varies across identical runs
 - Studying **translation artifacts** in a specific technical domain
 - Breaking the watermark (as a side effect)
 
