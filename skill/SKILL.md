@@ -1,128 +1,120 @@
 ---
 name: whatmark
-description: Comparative experiment on what changes when a text goes through machine translation. Generates the same content through two independent paths (written directly in the target language, vs. written in English and translated by a local model via Ollama), then quantifies their lexical and structural divergence with measurable metrics. Use this skill when the user wants to compare machine translation with direct writing, study a translator's artifacts, measure how much two texts in the same language diverge, analyze the stylistic tics of a local model, or evaluate which path produces better prose.
+description: Esperimento comparativo su comunicazione tra Claude Code e altro modello linguistico locale che lavora in collaborazione, in questo caso per la traduzione di un testo.
 ---
 
-# WhatMark?
+# Translation Lab
 
-Two observations of the same object from different positions produce a
-measurable shift. Here the object is a piece of content, the two positions
-are two production paths, and the shift is measured in lexical metrics.
+Esperimento controllato: **lo stesso contenuto, due percorsi diversi**
 
-- **Path A** — the text written directly in the target language.
-- **Path B** — the same content written in English, then translated by a
-  local model served by Ollama.
+- **Percorso A** — il testo scritto direttamente nella lingua target.
+- **Percorso B** — il testo scritto in una lingua diversa dalla lingua target (se la lingua target NON è l'inglese, l'inglese viene scelto di default), poi tradotto da un modello locale (Ollama) nella stessa lingua target.
 
-The output isn't the two texts: it's **the analysis of their difference**.
+L'output sono i due testi nella lingua target e **l'analisi della loro differenza**.
 
-## Prerequisites
+## Prerequisiti
 
-Ollama running with at least one model. Check before starting:
+Ollama in esecuzione con almeno un modello. Verifica prima di partire:
 
 ```bash
 curl -s http://127.0.0.1:11434/api/tags
 ```
 
-If it doesn't respond, start Ollama. If the model is missing:
-`ollama pull mistral`. Don't install anything without asking the user for
-confirmation.
+Se non risponde: avvia Ollama. Se manca il modello: `ollama pull mistral`.
+Non installare nulla senza chiedere conferma all'utente.
 
-## Paths and interpreter
+## Percorsi e interprete
 
-The scripts live in `scripts/` **inside this skill**, not in the user's
-working directory. Resolve the skill's absolute path before running them.
+Gli script stanno nella cartella `scripts/` **di questa skill**, non nella
+directory di lavoro dell'utente. Risolvi il percorso assoluto della skill
+prima di eseguirli e usalo in tutti i comandi.
 
-The produced files, however, land in the **workspace**: `C:\ClaudeText` on
-Windows, `~/ClaudeText` elsewhere, or the path in `WHATMARK_DIR`. The
-scripts create it themselves and resolve simple names inside it, so just
-pass `A_direct.txt` with no path.
+L'interprete cambia per sistema operativo:
+- Windows: `py`
+- macOS / Linux: `python3`
 
-Interpreter: `py` on Windows, `python3` on macOS and Linux.
-In the examples below, `<SKILL>` is this folder's absolute path and `<PY>`
-is the correct interpreter.
+Negli esempi sotto, `<SKILL>` sta per il percorso assoluto di questa cartella
+e `<PY>` per l'interprete corretto.
 
-## Step order: don't reverse it
+## Procedura
 
-The direct text must be written **before** the English one. If you write
-the English version first, the target-language text you produce right
-after is anchored to what's already in context: you'd be comparing two
-translations, not a translation against genuine writing.
+### 1. Concorda il contenuto
 
-For a truly clean test, produce the two texts in separate sessions starting
-from the same written brief.
+Utilizzando come lingua l'inglese, chiedi all'utente argomento, lunghezza indicativa e lingua target. L'argomento può anche specificarlo in autonomia all'inizio della richiesta.
+Il contenuto deve essere **identico nei due percorsi**: è l'unica variabile
+che va tenuta ferma perché l'esperimento abbia senso.
 
-## Procedure
+Scrivi un brief di 2-3 righe e fattelo confermare. Quel brief verrà usato
+alla lettera per entrambi i percorsi.
 
-### 1. Agree on the brief
+Una volta concordato il brief, salvalo come `brief.txt` nella cartella scelta come cartella di ouput generale, ossia `C:\ClaudeText` per Windows e `~/ClaudeText` per Linux/macOS. Se non esiste, creala.
 
-Ask for topic, approximate length, target language, and tone.
-Write a 2-3 line brief and get it confirmed: it will be used **verbatim**
-for both paths. It's the only variable that must stay fixed for the
-experiment to make sense.
+Inoltre, dopo le scelte e la conferma dell'utente sulle scelte effettuate, non chiedere più conferme ed esegui i comandi relativi all'obiettivo da raggiungere (traduzione e salvataggio dei file nella cartella indicata) senza ulteriori interazioni con l'utente.
 
-Save it as `brief.txt` in the workspace.
+### 2. Percorso A — scrittura diretta
 
-### 2. Path A — direct writing
+Scrivi il testo nella lingua target, seguendo il brief.
+Salvalo come `A_direct.txt` nella cartella usata come output generale.
 
-Write the text in the target language following the brief.
-Save it as `A_direct.txt` in the workspace.
+### 3. Percorso B — inglese, poi traduzione
 
-### 3. Path B — English, then translation
+Scrivi lo **stesso** contenuto in inglese, dallo stesso brief.
+Salvalo in `B_source_en.txt` nella medesima cartella.
 
-Write the **same** content in English, from the same brief.
-Save it as `B_source_en.txt` in the workspace.
-
-Translate it with the local model:
+Poi traducilo con il modello locale:
 
 ```bash
 <PY> "<SKILL>/scripts/ollama_translate.py" B_source_en.txt \
-    -o B_translated.txt --target italian --model mistral
+    -o B_translated.txt --target italiano --model mistral
 ```
 
-Options: `--model` (any model in Ollama), `--target` (language),
-`--temperature` (default 0.3, low for translation).
-
-### 4. Analysis
+### 4. Analisi
 
 ```bash
 <PY> "<SKILL>/scripts/compare_texts.py" A_direct.txt B_translated.txt \
-    --labels "Direct" "Translated" --save report.txt
+    --labels "Diretto" "Tradotto"
 ```
 
-Add `--json` for structured output.
+Aggiungi `--json` se serve l'output grezzo per elaborazioni successive.
 
-### 5. Interpret
+### 5. Interpreta i numeri
 
-Don't just print the table. Comment on what the numbers say:
+Non limitarti a stampare la tabella. Commenta cosa dicono i valori:
 
-| Metric | What it reveals |
+| Metrica | Cosa rivela |
 |---|---|
-| **Unigram Jaccard** | how much vocabulary they share. High = the translator chose different words |
-| **Bigram/trigram Jaccard** | how much the *syntax* changed. Always grows relative to unigrams: if it grows a lot, the translator restructured the sentences, not just swapped words |
-| **type-token ratio** | lexical richness. A drop in the translated text = flattened vocabulary |
-| **avg. sentence length** | translators tend to lengthen sentences: they spell out what the original left implicit |
-| **sentence length stdev** | rhythmic variety. A drop = more monotone prose |
-| **technical anglicisms** | how many English terms the translator translated when it shouldn't have. In the IT domain this is the most diagnostic indicator |
-| **exclusive vocabulary** | the translator's concrete word choices. The most readable part at a glance |
+| **Jaccard unigrammi** | quanto vocabolario condividono. Alto = il traduttore ha scelto parole diverse |
+| **Jaccard bi/trigrammi** | quanto è cambiata la *sintassi*. Cresce sempre rispetto agli unigrammi: se cresce molto, il traduttore ha ricostruito le frasi, non solo sostituito parole |
+| **type-token ratio** | ricchezza lessicale. Un calo nel tradotto = appiattimento del vocabolario |
+| **lungh. media frase** | i traduttori tendono ad allungare (esplicitano ciò che l'originale lasciava implicito) |
+| **dev.std lungh. frase** | varietà di ritmo. Un calo = prosa più monotona |
+| **anglicismi tecnici** | quanti termini inglesi il traduttore ha (impropriamente) tradotto. Nel dominio IT è l'indicatore più diagnostico |
+| **lessico esclusivo** | mostra le *scelte* del traduttore. È la parte più leggibile a occhio |
 
-Close with a qualitative verdict: which of the two texts is better, where
-the translator lost register or precision, whether the structure held up.
+### 6. Riporta
 
-## Variants
+Presenta all'utente la tabella, poi un commento di qualche riga su:
+- dove il traduttore ha perso registro o precisione
+- quali termini tecnici ha tradotto quando non doveva
+- se la struttura in paragrafi ha retto
+- il verdetto qualitativo: quale dei due testi è migliore, e perché
+e salva l'ouput come file di testo chiamato report.txt nella stessa cartella in cui si trovano gli altri output.
 
-- **Comparing models** — same `B_source_en.txt`, translated by different
-  models (`--model mistral`, `--model llama3.2`, `--model qwen2.5`).
-  Compare the translations against each other: each one's tics emerge.
-- **Temperature effect** — same translation at `--temperature 0.1` and `0.9`.
-- **Background noise** — translate twice with identical parameters and
-  compare the two outputs. The residual divergence is pure sampling noise,
-  and gives you the threshold below which any other result is irrelevant.
-  Do this first: without that number you can't interpret the others.
-- **Round-trip** — IT to EN to IT, compared against the Italian original.
-  Measures how much meaning survives a full round trip.
 
-## Notes
+## Varianti interessanti (OPZIONALI solo se specificato dagli utenti)
 
-Python 3.10+ stdlib only, no dependencies.
-`ollama_translate.py` talks to Ollama's HTTP API on `127.0.0.1:11434`:
-no SDK needed, it's a POST with a JSON payload.
+- **Modelli a confronto**: stesso `B_source_en.txt`, tradotto da modelli
+  diversi (`--model mistral`, `--model llama3.2`, `--model qwen2.5`).
+  Confronta le traduzioni fra loro: emergono i tic di ciascun modello.
+- **Effetto temperatura**: stessa traduzione a `--temperature 0.1` e `0.9`.
+- **Stabilità**: traduci due volte con gli stessi parametri e confronta i due
+  output. La divergenza residua misura il rumore di sampling.
+- **Round-trip**: IT → EN → IT e confronta con l'originale italiano. Misura
+  quanto significato sopravvive a un giro completo.
+
+## Note
+
+Gli script usano solo la stdlib di Python 3.10+. Nessuna dipendenza.
+Su Windows usa `py` al posto di `python3`.
+`ollama_translate.py` parla con l'API HTTP di Ollama su `127.0.0.1:11434`;
+non serve alcun SDK, è una POST con payload JSON.
