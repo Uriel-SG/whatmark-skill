@@ -13,7 +13,9 @@ A controlled experiment, with numbers instead of impressions.
 
 ***Slightly more official and desired second kind of objective:***
 
-***"WhatMark?"*** Stands for *"What Watermark?"*. By relying on accurate automated translation using open-source models that do not apply watermarks, **the original watermark is naturally removed** while trying to minimize the loss of text quality.
+***"WhatMark?"*** Stands for *"What Watermark?"*. By relying on accurate automated translation using open-source models that do not apply watermarks, **the original watermark is naturally removed** while trying to minimize the loss of text quality. 
+
+**Note.** *It is recommended to always check and compare the generated texts: occasionally, the results are terrible.*
 
 So, this is a sort of "academic" and interesting watermark breaker (conceived as an indirect side effect) made only for **education purpose**.
 
