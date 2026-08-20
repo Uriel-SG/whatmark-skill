@@ -5,9 +5,17 @@
 
 # WhatMark?
 
+***Academic Interesting, semi-pseudo-official purpose:***
+
 **How much does a text change when it goes through machine translation?**
 
 A controlled experiment, with numbers instead of impressions.
+
+***Slightly more official and desired second kind of objective:***
+
+***"WhatMark?"*** Stands for *"What Watermark?"*. By relying on accurate automated translation using open-source models that do not apply watermarks, **the original watermark is naturally removed** while trying to minimize the loss of text quality.
+
+So, this is a sort of "academic" and interesting watermark breaker (conceived as an indirect side effect) made only for **education purpose**.
 
 [![Python](https://img.shields.io/badge/python-3.10%2B-blue)](https://www.python.org/)
 [![Agent Skill](https://img.shields.io/badge/Claude-Agent%20Skill-8A63D2)](https://code.claude.com/docs/en/skills)
@@ -21,7 +29,7 @@ A controlled experiment, with numbers instead of impressions.
 
 ## What it is
 
-WhatMark? is an **Agent Skill for Claude Code** that runs a controlled
+"WhatMark?" is an **Agent Skill for Claude Code** that runs a controlled
 linguistic experiment: it produces the same content through two independent
 paths and measures how much they diverge.
 
@@ -44,7 +52,7 @@ different positions produce a measurable shift. Here the object is a piece
 of content, the positions are two production paths, and the shift is
 measured in lexical and structural metrics.
 
-**The output isn't the two texts. It's the analysis of their difference.**
+**The output isn't the two texts** (even if you have access to them). **It's the analysis of their difference.**
 
 ## What it's for
 
@@ -53,8 +61,9 @@ measured in lexical and structural metrics.
 - Measuring the effect of **temperature** and other sampling parameters
 - Establishing the **background noise** of a local model: how much it varies across identical runs
 - Studying **translation artifacts** in a specific technical domain
+- Breaking the watermark (as a side effect)
 
-> **Note:** translation performed by Mistral completely breaks the watermark.
+> **Note:** translation performed by Mistral ***completely*** breaks the watermark.
 
 ---
 
@@ -261,7 +270,7 @@ numbers before you even re-read the text.
 
 ---
 
-## Suggested experiments
+## Suggested experiments (optional)
 
 **1. Background noise — do this first**
 
@@ -338,15 +347,6 @@ rm -rf ~/.claude/skills/whatmark
 
 The workspace is left untouched: it holds your work.
 
-## Contributing
-
-Issues and pull requests welcome. Areas where the project would benefit most:
-
-- **additional metrics** — sentence-level edit distance, inter-paragraph
-  cohesion measures, per-language readability indices
-- **anglicism lists** for domains other than IT security
-- **support for other local backends** besides Ollama
-- **validation on language pairs** other than IT/EN
 
 ## License
 
