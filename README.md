@@ -274,7 +274,7 @@ numbers before you even re-read the text.
 
 ## Suggested experiments (optional)
 
-**1. Background noise — do this first**
+**1. Background noise**
 
 Translate twice with identical parameters and compare the two Italian
 outputs. The residual divergence is pure sampling noise: it's the threshold
@@ -302,21 +302,6 @@ translator's quality in that domain.
 
 IT → EN → IT, compared against the original. Measures how much meaning
 survives a full round trip.
-
----
-
-## Methodological note
-
-**Production order matters.**
-
-The two texts must be produced independently. If you write the English
-version first and the Italian one right after, the second is *anchored* to
-the first — it's still in the model's context. You'd be comparing two
-translations, not a translation against genuine writing.
-
-The skill enforces the correct order (direct first, English after). For a
-truly clean test, produce the two texts in **separate sessions** starting
-from the same written brief.
 
 ---
 
