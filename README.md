@@ -7,7 +7,7 @@
 
 ***Academic Interesting, semi-pseudo-official purpose:***
 
-**How much does a text change when it goes through machine translation?**
+How much does a text change when it goes through machine translation?
 
 A controlled experiment, with numbers instead of impressions.
 
@@ -32,7 +32,7 @@ So, this is a sort of "academic" and interesting watermark breaker (conceived as
 
 ## What it is
 
-"WhatMark?" is an **Agent Skill for Claude Code** that runs a controlled
+*"WhatMark?"* is an **Agent Skill for Claude Code** that runs a controlled
 linguistic experiment: it produces the same content through two independent
 paths and measures how much they diverge.
 
@@ -348,6 +348,204 @@ rm -rf ~/.claude/skills/whatmark
 ```
 
 The workspace is left untouched: it holds your work.
+
+---
+
+# How does "WhatMark?" break the AI ​​watermark?
+
+*To understand this, we first need to grasp—more or less, and in very simplified terms—how AI watermarking for text works.*
+
+## How AI text watermarking works
+ 
+When a language model writes, it constantly picks between words that would
+work equally well. A watermark quietly nudges those coin-flip decisions in a
+direction only the provider can predict (leaving the text unchanged in
+meaning, but statistically unusual in a way a key-holder can measure).
+
+### The key idea: models are often undecided
+ 
+Halfway through a sentence, a model isn't choosing one correct word. It's
+ranking every word it knows...
+ 
+Sometimes the answer is forced. After *"the network is completely"*, the word
+`flat` might be the obvious choice, and everything else is a distant runner-up.
+ 
+But often several words are near-ties:
+ 
+> Network segmentation is **essential** / **crucial** / **critical** / **vital**
+ 
+Four words, same meaning, roughly equal odds... Whichever one comes out, no
+reader would notice a difference.
+ 
+**That indecision is free space.** *The watermark lives there.*
+
+## How the nudge works
+
+More or less, the procedure is as follows:
+
+<img width="1024" height="559" alt="ai-wm" src="https://github.com/user-attachments/assets/33854ba9-aef8-4625-b6a2-812c7f135383" />
+
+*before each word, the system does something like a secret coin flip*
+ 
+1. It takes a **secret key** (which never leaves the provider's servers)
+2. It mixes in **the last few words already written** *(at the very start
+   there are none, so the words of your prompt may play that role)*
+3. It feeds the mix into a **hash function** (one-way scramble)
+4. Out comes the **digest**: a fixed block of bytes that read as a number and used
+   as a starting value, it takes the name **seed**
+5. The seed drives a **pseudo-random generator** (PRNG) that shuffles the whole
+   dictionary into a new order
+6. The shuffled list is **cut in two**: the first quarter becomes the
+   **preferred group**, the rest doesn't
+7. Preferred words get a **small bias** added to their score
+8. The model picks normally from there
+
+Meanwhile (and this is easy to miss) the model has been scoring every word
+in its vocabulary on its own, completely independently. That calculation
+knows nothing about the key or the seed. **The two only meet at step 7.**
+
+### The shuffle is not random (and that's the point)
+
+**The generator isn't actually random.** It's a *pseudo*-random number
+generator: a fully deterministic algorithm that, given the same seed, always
+produces the exact same sequence — same numbers, same order, every time,
+forever. It only *looks* random to anyone who doesn't know the seed.
+ 
+```
+seed 42  →  8, 3, 7, 1, 9, 2 …        every single time
+seed 42  →  8, 3, 7, 1, 9, 2 …        again, identical
+seed 43  →  4, 6, 5, 9, 8, 2 …        completely different
+```
+ 
+That double nature is the entire trick... The shuffle has to be two
+contradictory things at once:
+ 
+- **Unpredictable** without the key — otherwise anyone could work out which
+  words are preferred and deliberately avoid them
+- **Perfectly repeatable** with the key — otherwise nobody could ever check a
+  finished text, because they couldn't rebuild the same groups
+  
+Genuine randomness would fail on the second count. If the shuffle were truly
+random, not even the system that performed it could reproduce it, and
+detection would be impossible. The security doesn't come from randomness at
+all — it comes from **the seed being secret**.
+
+Then it moves to the next word and does it all again — with a completely
+different split, because the preceding words have changed.
+ 
+**Two things follow from step 2**, and they're the clever part:
+ 
+- There is no fixed list of "marked words." The same word can be preferred in
+  one sentence and not in the next.
+- Anyone holding the key can replay the whole calculation later, because it
+  only depends on words that are visible in the finished text.
+
+### The bias: a small number that does all the work
+ 
+The "thumb on the scale" has a name — the **bias** — and it's worth
+understanding, because it explains almost everything else about how this
+technology behaves...
+ 
+Before picking a word, the model has given every word in its vocabulary a
+raw score. The bias is simply **a fixed amount added to the score of every
+preferred word**. Nothing subtler than that: *same amount, every time, only
+to the preferred group.*
+ 
+What makes it clever is that adding a fixed amount *doesn't have a fixed
+effect.* Because scores get converted to probabilities through a curve, the
+same bias behaves completely differently depending on how sure the model
+already was.
+ 
+| Situation | Before bias | After bias |
+|---|---|---|
+| Two near-tied synonyms | 55% / 45% | **90%** / 10% |
+| One obviously correct word | 99.7% / 0.3% | **98%** / 2% |
+ 
+Same bias, both times: in the first case it decides the outcome; in the
+second it barely registers, because the gap it has to close is far too wide!
+ 
+**This is the whole safety mechanism.** Grammar, facts, names and technical
+terms are all cases where the model has a clear favourite... so the bias
+can't overrule them. It only gets to act where the model was going to flip
+a coin anyway.
+ 
+It's also the reason **detection needs length.** Every forced word is a wasted
+position: it lands in the preferred group by luck alone, carrying no signal.
+Only the genuinely undecided moments count, and those are a fraction of any
+piece of writing.
+ 
+Turning the bias up would make the signal stronger and faster to detect —
+and would start visibly degrading the writing, because it would begin
+overruling choices that shouldn't be overruled. That trade-off has no clever
+solution. It's the fundamental tension of the whole approach.
+ 
+### How detection works
+ 
+***The detector needs the key.*** It does **not** need the model.
+ 
+It walks through the text and, at every position, recreates the same split
+the generator used... possible because the split depends only on the key and
+the preceding words. Then it simply counts.
+ 
+If the preferred group holds a quarter of the dictionary, then in ordinary
+human text about **25%** of words should land in it by coincidence.
+ 
+| Text of 200 words | Words in preferred group | Verdict |
+|---|---|---|
+| Written by a human | ~50 | as expected |
+| Watermarked | ~110 | far too many to be chance |
+ 
+That's the whole test: not a fingerprint or a hidden character...just a
+count that comes out wrong too consistently.
+
+### The only real way to break the watermark
+
+Everything is based on a "Translation Attack."
+
+As we saw before, the watermark isn't stored in the words: It is stored in a relationship between each word and the ones before it... translation rebuilds every one of those relationships.
+
+```
+GENERATED
+"Network segmentation is essential for limiting lateral movement"
+              ↑              ↑
+    these words determined the group used to check the next one
+
+TRANSLATED
+"Segmentare la rete è indispensabile per limitare i movimenti laterali"
+              ↑              ↑
+    different words → different seeds → different groups
+```
+
+Many people say: *"Okay, but if you translate it, it’s no longer the text produced by the LLM you’re paying for, and you lose quality. 
+At that point, you might as well just have another AI generate the text directly!"*
+
+While that may be true to some extent, it’s not quite the whole story... *"What Watermark?"*, for instance, has Claude handle the entire process, aiming to preserve Claude's outline, structure, and key choices—even though the final result differs from the original text: the content and general structure remain virtually identical.
+
+Regarding quality: to allow everyone to use the tool entirely locally—without relying on the cloud or API keys—this repository uses a local, open-source Mistral model (which takes up less than 5GB). 
+Naturally, the translation quality won't be optimal, and the text will require review. However, those with access to greater computational resources will achieve a perfect, excellent result: *the structure generated by Claude remains intact, yet the process of translating it into one's own language automatically and naturally eliminates the watermark.*
+
+*The skill does exactly this:*
+
+If I am Italian and want a text about the history of Rome, the skill doesn't have Claude write it in Italian; instead, it generates the text in English, automatically passes it to Mistral locally for translation, and then exports a ready-to-use .txt file—featuring Claude's content and structure, but "processed" by Mistral and stripped of the watermark.
+
+---
+
+# Disclaimer
+
+**Watermarking matters.** Machine-generated text is now indistinguishable from human writing by reading alone, and in some contexts — court filings, research papers, news, political messaging — that difference carries real weight. *Watermarking doesn't solve this, but it makes a question askable that otherwise has no answer at all.*
+
+It is also a **legal obligation.** Under **Article 50 of the EU AI Act**, in force since **2 August 2026**, providers must mark synthetic output in a machine-readable way, and ***publishers must disclose AI-generated content addressed to the public***. These are two separate duties: removing a mark does not discharge the second one, it only deletes the evidence supporting it.
+
+On one hand, this project is experimental and aims to analyze the original text alongside the exact same text processed by a translator—with both outputs in the same language.
+
+On the other hand, it is an experiment in simplified watermark removal while maintaining a certain level of quality.
+
+***This does not mean that this repository should be used for malicious purposes.***
+
+For me, delving into this subject matter and this project was fascinating and deeply engaging; the goal was study and in-depth exploration.
+*May it be the same for you, too.*
+
+--- 
 
 
 ## License
